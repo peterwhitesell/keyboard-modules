@@ -1,0 +1,12 @@
+#!/bin/bash
+
+generate() {
+  echo "generating..."
+  python ./src/main.py && echo "generated"
+}
+export -f generate
+
+generate
+
+fswatch -o ./src \
+| xargs -n1 -I{} bash -c 'generate'
