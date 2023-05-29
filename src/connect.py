@@ -1,6 +1,6 @@
 from solid2 import *
 from solid2.extensions.bosl2 import *
-from cut import CUT_THICK
+from cut import *
 
 class M3:
   diameter = 3
@@ -10,21 +10,40 @@ class M2:
   diameter = 2
   insert = 3.25
 
-class HeatsetInsert():
-  def __init__(self, l=5, size=M3, thick=.5):
+class HeatsetInsertConf():
+  def __init__(self, l=5, size=M3, thick=.5, capped=True, round=1):
     self.l = l
     self.size = size
     self.thick = thick
+    self.capped = capped
+    self.round = round
+
+class HeatsetInsert():
+  def __init__(self, conf: HeatsetInsertConf):
+    self.conf = conf
     self.obj = union()
-    self.d = self.size.insert + 2*self.thick
+    self.d = conf.size.insert + 2*conf.thick
+    self.l = conf.l
     self.draw()
   
   def draw(self):
-    self.obj = cylinder(h=self.l, d=self.d)
-    self.obj -= cylinder(h=self.l + CUT_THICK, d=self.size.insert).down(CUT_THICK/2)
+    self.obj = cyl(h=self.conf.l, d=self.d, rounding2=self.conf.thick)
+    cutter = cyl(h=self.conf.l, d=self.conf.size.insert)
+    openings = [OPEN_BOTTOM, OPEN_TOP]
+    if self.conf.capped:
+      openings = [OPEN_BOTTOM]
+      cutter = cutter.down(self.conf.thick)
+    self.obj = cut(
+      self.obj,
+      cutter,
+      openings=openings,
+    )
 
 class Shaft():
-  def __init__(self, l=5, size=M3, thick=.5):
+  def __init__(self, l=5, size=M3, thick=None):
+    if thick is None:
+      insert = HeatsetInsert(HeatsetInsertConf(size=size))
+      thick = (insert.d - size.diameter)/2
     self.l = l
     self.size = size
     self.thick = thick
@@ -34,7 +53,11 @@ class Shaft():
   
   def draw(self):
     self.obj = cylinder(h=self.l, d=self.d)
-    self.obj -= cylinder(h=self.l + CUT_THICK, d=self.size.diameter).down(CUT_THICK/2)
+    self.obj = cut(
+      self.obj,
+      cylinder(h=self.l, d=self.size.diameter),
+      openings=[OPEN_BOTTOM, OPEN_TOP],
+    )
 
 class JSTConnectorConf():
   def __init__(
@@ -75,17 +98,17 @@ class JSTConnector():
       self.h,
     ])
     # hollow
-    self.obj -= cuboid([
+    self.obj = cut(self.obj, cuboid([
       self.conf.in_w,
       self.conf.in_d,
       self.conf.in_h,
-    ]).down(self.conf.thick/2 + CUT_THICK)
+    ]).down(self.conf.thick/2), openings=[OPEN_BOTTOM])
     # open back
-    self.obj -= cuboid([
+    self.obj = cut(self.obj, cuboid([
       self.conf.in_w,
-      self.conf.thick + 2*CUT_THICK,
+      self.conf.thick,
       self.h,
-    ]).forward(self.d/2 - self.conf.thick/2).up(self.conf.thick)
+    ]).forward(self.d/2 - self.conf.thick/2).up(self.conf.thick), openings=[OPEN_BACK])
     # open bottom
     self.obj -= cuboid([
       self.conf.in_w - 1,

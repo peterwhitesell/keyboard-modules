@@ -1,0 +1,31 @@
+from keysocket import *
+from column import Column, ColumnConf
+from key import *
+from solid2 import *
+from solid2.extensions.bosl2 import *
+
+def render(conf: ColumnConf, stl=False):
+    conf.top = True
+    top = Column(conf)
+    conf.show_keys = False
+    top_no_keys = Column(conf)
+
+    conf.top = False
+    bottom = Column(conf)
+
+    name = f'column-r{conf.rows}-a{conf.angle}-{conf.switches.__name__}'
+
+    union()(
+        bottom.obj,
+        top.obj,
+        top_no_keys.obj.left(50).zflip().rotateX(50).down(20),
+        bottom.obj.left(100),
+    ).save_as_scad(f'./out/{name}.scad')
+    if stl:
+        bottom.obj.save_as_stl(f'./out/{name}_bottom.stl')
+    else:
+        bottom.obj.save_as_scad(f'./out/{name}_bottom.scad')
+    if stl:
+        top_no_keys.obj.save_as_stl(f'./out/{name}_top.stl')
+    else:
+        top_no_keys.obj.save_as_scad(f'./out/{name}_top.scad')
