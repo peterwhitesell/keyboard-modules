@@ -1,5 +1,6 @@
 from solid2 import *
 from solid2.extensions.bosl2 import *
+from solid2.extensions.bosl2.bosl2_base import Bosl2Base
 from cut import *
 
 from key import *
@@ -28,11 +29,12 @@ class SocketConf:
     self.notch_d = notch_d
     self.switch = switch
 
-class Socket:
+class Socket(Bosl2Base):
   def __init__(
     self,
     conf: SocketConf,
   ):
+    super().__init__('union', {})
     if conf.switch is not None:
       conf.recess_w = conf.switch.base_w
       conf.recess_d = conf.switch.base_d
@@ -44,11 +46,8 @@ class Socket:
     self.w = self.conf.recess_w + 2 * self.conf.rim
     self.d = self.conf.recess_d + 2 * self.conf.rim
     self.h = self.conf.thick
-    self.draw()
-
-  def draw(self):
     # shell
-    self.obj = cuboid([
+    obj = cuboid([
       self.w,
       self.d,
       self.conf.thick,
@@ -63,24 +62,25 @@ class Socket:
       self.conf.notch_d,
       self.notchH,
     ]).up(self.conf.thick/2 - self.notchH/2 + self.conf.notch_z).color('blue')
-    self.obj = cut(self.obj, recess, openings=[OPEN_BOTTOM, OPEN_TOP])
-    self.obj = cut(
-      self.obj,
+    obj = cut(obj, recess, openings=[OPEN_BOTTOM, OPEN_TOP])
+    obj = cut(
+      obj,
       notch.left(self.conf.recess_w/2 + self.conf.notch_w/2),
       openings=[OPEN_BOTTOM, OPEN_RIGHT],
     )
-    self.obj = cut(
-      self.obj,
+    obj = cut(
+      obj,
       notch.right(self.conf.recess_w/2 + self.conf.notch_w/2),
       openings=[OPEN_BOTTOM, OPEN_LEFT],
     )
-    self.obj = cut(
-      self.obj,
+    obj = cut(
+      obj,
       notch.rotate(90).forward(self.conf.recess_d/2 + self.conf.notch_w/2),
       openings=[OPEN_BOTTOM, OPEN_BACK],
     )
-    self.obj = cut(
-      self.obj,
+    obj = cut(
+      obj,
       notch.rotate(90).back(self.conf.recess_d/2 + self.conf.notch_w/2),
       openings=[OPEN_BOTTOM, OPEN_FRONT],
     )
+    self.add(obj)

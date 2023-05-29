@@ -1,5 +1,6 @@
 from solid2 import *
 from solid2.extensions.bosl2 import *
+from solid2.extensions.bosl2.bosl2_base import Bosl2Base
 from cut import *
 
 class M3:
@@ -18,29 +19,29 @@ class HeatsetInsertConf():
     self.capped = capped
     self.round = round
 
-class HeatsetInsert():
+class HeatsetInsert(Bosl2Base):
   def __init__(self, conf: HeatsetInsertConf):
+    super().__init__('union', {})
     self.conf = conf
-    self.obj = union()
     self.d = conf.size.insert + 2*conf.thick
     self.l = conf.l
-    self.draw()
-  
-  def draw(self):
-    self.obj = cyl(h=self.conf.l, d=self.d, rounding2=self.conf.thick)
+    
+    obj = cyl(h=self.conf.l, d=self.d, rounding2=self.conf.thick)
     cutter = cyl(h=self.conf.l, d=self.conf.size.insert)
     openings = [OPEN_BOTTOM, OPEN_TOP]
     if self.conf.capped:
       openings = [OPEN_BOTTOM]
       cutter = cutter.down(self.conf.thick)
-    self.obj = cut(
-      self.obj,
+    obj = cut(
+      obj,
       cutter,
       openings=openings,
     )
+    self.add(obj)
 
-class Shaft():
+class Shaft(Bosl2Base):
   def __init__(self, l=5, size=M3, thick=None):
+    super().__init__('union', {})
     if thick is None:
       insert = HeatsetInsert(HeatsetInsertConf(size=size))
       thick = (insert.d - size.diameter)/2
@@ -48,16 +49,11 @@ class Shaft():
     self.size = size
     self.thick = thick
     self.d = self.size.diameter + 2*self.thick
-    self.obj = union()
-    self.draw()
-  
-  def draw(self):
-    self.obj = cylinder(h=self.l, d=self.d)
-    self.obj = cut(
-      self.obj,
+    self.add(cut(
+      cylinder(h=self.l, d=self.d),
       cylinder(h=self.l, d=self.size.diameter),
       openings=[OPEN_BOTTOM, OPEN_TOP],
-    )
+    ))
 
 class JSTConnectorConf():
   def __init__(
@@ -81,37 +77,35 @@ class JSTConnectorConf():
     self.ledge = ledge
     self.thick = thick
 
-class JSTConnector():
+class JSTConnector(Bosl2Base):
   def __init__(self, conf: JSTConnectorConf):
+    super().__init__('union', {})
     self.conf = conf
     self.w = self.conf.in_w + 2*self.conf.thick
     self.d = self.conf.in_d + 2*self.conf.thick
     self.h = self.conf.in_h + self.conf.thick
-    self.obj = union()
-    self.draw()
-  
-  def draw(self):
     # shell
-    self.obj = cuboid([
+    obj = cuboid([
       self.w,
       self.d,
       self.h,
     ])
     # hollow
-    self.obj = cut(self.obj, cuboid([
+    obj = cut(obj, cuboid([
       self.conf.in_w,
       self.conf.in_d,
       self.conf.in_h,
     ]).down(self.conf.thick/2), openings=[OPEN_BOTTOM])
     # open back
-    self.obj = cut(self.obj, cuboid([
+    obj = cut(obj, cuboid([
       self.conf.in_w,
       self.conf.thick,
       self.h,
     ]).forward(self.d/2 - self.conf.thick/2).up(self.conf.thick), openings=[OPEN_BACK])
     # open bottom
-    self.obj -= cuboid([
+    obj -= cuboid([
       self.conf.in_w - 1,
       self.conf.in_d + self.conf.thick,
       self.h,
     ]).forward(self.conf.thick/2).up(self.conf.ledge)
+    self.add(obj)

@@ -2,6 +2,7 @@ from keysocket import *
 import math as maths
 from solid2 import *
 from solid2.extensions.bosl2 import *
+from solid2.extensions.bosl2.bosl2_base import Bosl2Base
 from connect import *
 from cut import *
 
@@ -62,15 +63,12 @@ class ColumnConf:
       self.in_h + self.thick - .1
     )
 
-class Column:
+class Column(Bosl2Base):
   def __init__(self, conf: ColumnConf):
+    super().__init__('union', {})
     self.conf = conf
-    self.obj = union()
     self.socket_ref = Socket(self.conf.socket)
     self.centerZ = self._rot_center_z()
-    self.draw()
-
-  def draw(self):
     # parts = []
     for i in range(self.conf.rows):
       part = _CasePart(
@@ -79,7 +77,7 @@ class Column:
         first=i == 0,
         last=i == self.conf.rows-1,
       )
-      obj = part.obj
+      obj = part
       # case split
       if self.conf.top:
         obj = cut(obj, cuboid([
@@ -90,9 +88,9 @@ class Column:
       else:
         obj = cut(obj, cuboid([2*part.w, 2*part.d, part.h]).up(part.h/2).down(self.conf.case_top_height))
         # mount connect
-        obj = cut_insert(obj, HeatsetInsert(self.conf.case_mount).obj.down(part.h))
+        obj = cut_insert(obj, HeatsetInsert(self.conf.case_mount).down(part.h))
       obj = obj.down(self.centerZ).rotateX(self.conf.angle * i).up(self.centerZ)
-      self.obj += obj
+      self.add(obj)
 
   def _rot_center_z(self):
     d = self.socket_ref.d + 2*self.conf.between
@@ -100,37 +98,30 @@ class Column:
     rad = maths.radians(self.conf.angle)/2
     return d / (2 * maths.tan(rad)) + h
 
-class _CasePart:
+class _CasePart(Bosl2Base):
   def __init__(
-      self,
-      conf: ColumnConf,
-      socket_ref: Socket,
-      first=False,
-      last=False,
-    ):
+    self,
+    conf: ColumnConf,
+    socket_ref: Socket,
+    first=False,
+    last=False,
+  ):
+    super().__init__('union', {})
     self.socket_ref = socket_ref
     self.first = first
     self.last = last
     self.conf = conf
-    self.obj = union()
-    self.w = 0
-    self.d = 0
-    self.h = 0
-    self.draw()
-
-  def draw(self):
-    h = self.conf.in_h + 2*self.conf.thick
-    w = self.conf.in_w + 2*self.conf.thick
-    d = self.socket_ref.d + 2*self.conf.between
-    top_d = d
-    d += 2*h # TODO something besides 2*h?
+    self.d = self.socket_ref.d + 2*self.conf.between
+    self.h = self.conf.in_h + 2*self.conf.thick
+    self.w = self.conf.in_w + 2*self.conf.thick
+    bottom_d = 2* self.d
     mv_fd = 0
-    end_offset = d / 2 - self.conf.in_d/2 - self.conf.thick
+    end_offset = bottom_d / 2 - self.conf.in_d/2 - self.conf.thick
     if self.first:
-      d = d - end_offset
+      bottom_d = bottom_d - end_offset
       mv_fd = end_offset/2
     if self.last:
-      d = d - end_offset
+      bottom_d = bottom_d - end_offset
       mv_fd = -end_offset/2
     # rounding
     edges = ["Y"]
@@ -139,98 +130,95 @@ class _CasePart:
     if self.last:
       edges.append(BACK)
     # shell
-    self.obj = cuboid([w, d, h], rounding=self.conf.round, edges=edges)
+    obj = cuboid([self.w, bottom_d, self.h], rounding=self.conf.round, edges=edges)
     # hollow
     in_cut = cuboid([
-      w - 2*self.conf.thick,
-      d,
-      h - 2*self.conf.thick,
+      self.w - 2*self.conf.thick,
+      bottom_d,
+      self.h - 2*self.conf.thick,
     ])
     if self.first:
       in_cut = in_cut.forward(self.conf.thick)
     if self.last:
       in_cut = in_cut.forward(-self.conf.thick)
-    self.obj -= in_cut
-    self.obj = self.obj.forward(mv_fd).down(h/2)
+    obj -= in_cut
+    obj = obj.forward(mv_fd).down(self.h/2)
     # socket
-    socket = self.socket_ref.obj.down(self.conf.socket.thick/2)
-    self.obj = cut_insert(self.obj, socket, openings=(OPEN_TOP))
+    socket = self.socket_ref.down(self.conf.socket.thick/2)
+    obj = cut_insert(obj, socket, openings=(OPEN_TOP))
     # case connect
     insert = HeatsetInsert(self.conf.case_connect)
-    hole = Shaft(l=h-self.conf.case_top_height, size=M2)
+    hole = Shaft(l=self.h-self.conf.case_top_height, size=M2)
     if self.first:
       if self.conf.top:
-        insert_f = insert.obj.color('black').back(d/2 - insert.d/3 - mv_fd).down(self.conf.case_top_height)
-        insert_fl = insert_f.left(w/2 - insert.d/3)
-        insert_fr = insert_f.right(w/2 - insert.d/3)
-        self.obj = cut_insert(self.obj, insert_fr, insert_fl, openings=[OPEN_BOTTOM])
+        insert_f = insert.color('black').back(bottom_d/2 - insert.d/3 - mv_fd).down(self.conf.case_top_height)
+        insert_fl = insert_f.left(self.w/2 - insert.d/3)
+        insert_fr = insert_f.right(self.w/2 - insert.d/3)
+        obj = cut_insert(obj, insert_fr, insert_fl, openings=[OPEN_BOTTOM])
       else:
-        hole_f = hole.obj.color('black').back(d/2 - insert.d/3 - mv_fd).down(h)
-        hole_fl = hole_f.left(w/2 - insert.d/3)
-        hole_fr = hole_f.right(w/2 - insert.d/3)
-        self.obj = cut_insert(self.obj, hole_fl, hole_fr, openings=[OPEN_BOTTOM, OPEN_TOP])
+        hole_f = hole.color('black').back(bottom_d/2 - insert.d/3 - mv_fd).down(self.h)
+        hole_fl = hole_f.left(self.w/2 - insert.d/3)
+        hole_fr = hole_f.right(self.w/2 - insert.d/3)
+        obj = cut_insert(obj, hole_fl, hole_fr, openings=[OPEN_BOTTOM, OPEN_TOP])
     elif self.last:
       if self.conf.top:
-        insert_b = insert.obj.color('blue').forward(d/2 - insert.d/3 + mv_fd).down(self.conf.case_top_height)
-        insert_bl = insert_b.left(w/2 - insert.d/3)
-        insert_br = insert_b.right(w/2 - insert.d/3)
-        self.obj = cut_insert(self.obj, insert_br, insert_bl, openings=[OPEN_BOTTOM])
+        insert_b = insert.color('blue').forward(bottom_d/2 - insert.d/3 + mv_fd).down(self.conf.case_top_height)
+        insert_bl = insert_b.left(self.w/2 - insert.d/3)
+        insert_br = insert_b.right(self.w/2 - insert.d/3)
+        obj = cut_insert(obj, insert_br, insert_bl, openings=[OPEN_BOTTOM])
       else:
-        hole_b = hole.obj.color('black').forward(d/2 - insert.d/3 + mv_fd).down(h)
-        hole_bl = hole_b.left(w/2 - insert.d/3)
-        hole_br = hole_b.right(w/2 - insert.d/3)
-        self.obj = cut_insert(self.obj, hole_bl, hole_br, openings=[OPEN_BOTTOM, OPEN_TOP])
+        hole_b = hole.color('black').forward(bottom_d/2 - insert.d/3 + mv_fd).down(self.h)
+        hole_bl = hole_b.left(self.w/2 - insert.d/3)
+        hole_br = hole_b.right(self.w/2 - insert.d/3)
+        obj = cut_insert(obj, hole_bl, hole_br, openings=[OPEN_BOTTOM, OPEN_TOP])
     else:
       if self.conf.top:
-        insert_m = insert.obj.color('blue').down(self.conf.case_top_height)
-        insert_ml = insert_m.left(w/2 - insert.d/3)
-        insert_mr = insert_m.right(w/2 - insert.d/3)
-        self.obj = cut_insert(self.obj, insert_mr, insert_ml, openings=[OPEN_BOTTOM])
+        insert_m = insert.color('blue').down(self.conf.case_top_height)
+        insert_ml = insert_m.left(self.w/2 - insert.d/3)
+        insert_mr = insert_m.right(self.w/2 - insert.d/3)
+        obj = cut_insert(obj, insert_mr, insert_ml, openings=[OPEN_BOTTOM])
       else:
-        hole_b = hole.obj.color('black').down(h)
-        hole_bl = hole_b.left(w/2 - insert.d/3)
-        hole_br = hole_b.right(w/2 - insert.d/3)
-        self.obj = cut_insert(self.obj, hole_bl, hole_br, openings=[OPEN_BOTTOM, OPEN_TOP])
+        hole_b = hole.color('black').down(self.h)
+        hole_bl = hole_b.left(self.w/2 - insert.d/3)
+        hole_br = hole_b.right(self.w/2 - insert.d/3)
+        obj = cut_insert(obj, hole_bl, hole_br, openings=[OPEN_BOTTOM, OPEN_TOP])
     # jst connect
     if self.last:
       hub_jst = JSTConnector(self.conf.hub_jst)
-      self.obj = cut_insert(
-        self.obj,
-        hub_jst.obj.yflip().color('pink').forward(d/2 - hub_jst.d/2 + mv_fd).down(h - hub_jst.h/2),
+      obj = cut_insert(
+        obj,
+        hub_jst.yflip().color('pink').forward(bottom_d/2 - hub_jst.d/2 + mv_fd).down(self.h - hub_jst.h/2),
         openings=[OPEN_BOTTOM],
       )
       side_jst = JSTConnector(self.conf.side_jst)
-      self.obj = cut_insert(
-        self.obj,
-        side_jst.obj.color('pink').rotateZ(-90).down(h - side_jst.h/2).left(w/2 - side_jst.d/2),
+      obj = cut_insert(
+        obj,
+        side_jst.color('pink').rotateZ(-90).down(self.h - side_jst.h/2).left(self.w/2 - side_jst.d/2),
         openings=[OPEN_BOTTOM],
       )
-      self.obj = cut_insert(
-        self.obj,
-        side_jst.obj.color('pink').rotateZ(90).down(h - side_jst.h/2).right(w/2 - side_jst.d/2),
+      obj = cut_insert(
+        obj,
+        side_jst.color('pink').rotateZ(90).down(self.h - side_jst.h/2).right(self.w/2 - side_jst.d/2),
         openings=[OPEN_BOTTOM],
       )
     # diagonal cut
     f_cut = cuboid([
-      w,
-      h,
-      2*h,
-    ]).forward(h/2).down(h).rotateX(self.conf.angle/2).forward(top_d/2).color('red')
+      self.w,
+      self.h,
+      2*self.h,
+    ]).forward(self.h/2).down(self.h).rotateX(self.conf.angle/2).forward(self.d/2).color('red')
     b_cut = cuboid([
-      w,
-      h,
-      2*h,
-    ]).forward(-h/2).down(h).rotateX(-self.conf.angle/2).forward(-top_d/2).color('red')
-    self.obj = cut(self.obj, f_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
-    self.obj = cut(self.obj, b_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
-    self.w = w
-    self.d = top_d
-    self.h = h
+      self.w,
+      self.h,
+      2*self.h,
+    ]).forward(-self.h/2).down(self.h).rotateX(-self.conf.angle/2).forward(-self.d/2).color('red')
+    obj = cut(obj, f_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
+    obj = cut(obj, b_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
     # key rendering
     if self.conf.show_keys and self.conf.switches is not None:
       # switch = self.conf.switches()
-      # self.obj += switch.obj
+      # obj += switch
       if self.conf.show_keys and self.conf.caps is not None:
         cap = self.conf.caps()
-        cap_obj = cap.obj.up(self.conf.switches.top_h).down(cap.top_h).up(cap.thick)
-        self.obj += cap_obj
+        obj += cap.up(self.conf.switches.top_h).down(cap.top_h).up(cap.thick)
+    self.add(obj)

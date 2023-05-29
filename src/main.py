@@ -1,4 +1,5 @@
 from solid2 import *
+from solid2.extensions.bosl2 import *
 from column import ColumnConf
 from key import ChocV1Switch, CherryMXSwitch, KailhLPCap, XDACap
 from render import render

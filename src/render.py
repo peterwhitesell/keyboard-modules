@@ -16,16 +16,16 @@ def render(conf: ColumnConf, stl=False):
     name = f'column-r{conf.rows}-a{conf.angle}-{conf.switches.__name__}'
 
     union()(
-        bottom.obj,
-        top.obj,
-        top_no_keys.obj.left(50).zflip().rotateX(50).down(20),
-        bottom.obj.left(100),
+        bottom,
+        top,
+        top_no_keys.left(50).zflip().rotateX(50).down(20),
+        bottom.left(100),
     ).save_as_scad(f'./out/{name}.scad')
     if stl:
-        bottom.obj.save_as_stl(f'./out/{name}_bottom.stl')
+        bottom.save_as_stl(f'./out/{name}_bottom.stl')
     else:
-        bottom.obj.save_as_scad(f'./out/{name}_bottom.scad')
+        bottom.save_as_scad(f'./out/{name}_bottom.scad')
     if stl:
-        top_no_keys.obj.save_as_stl(f'./out/{name}_top.stl')
+        top_no_keys.save_as_stl(f'./out/{name}_top.stl')
     else:
-        top_no_keys.obj.save_as_scad(f'./out/{name}_top.scad')
+        top_no_keys.save_as_scad(f'./out/{name}_top.scad')
