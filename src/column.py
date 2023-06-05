@@ -27,6 +27,8 @@ class ColumnConf:
     switches=None,
     caps=None,
     show_keys=False,
+    column_connect=JSTConnector,
+    fpc=None,
   ):
     self.rows = rows
     self.between = between
@@ -46,6 +48,14 @@ class ColumnConf:
     if switches is not None:
       self.in_h = switches.bottom_h - self.thick + 2
     self.caps = caps
+    self.column_connect = column_connect
+    if fpc is None:
+      fpc = FPCConnectorConf(
+        pitch=.5,
+        pins=5 + rows, # g, v, di, do, c, r0, ... rN
+        h=thick,
+      )
+    self.fpc = fpc
     if hub_jst is None:
       hub_jst = JSTConnectorConf(pitch=1.25, pins=5)
     self.hub_jst = hub_jst
@@ -58,7 +68,7 @@ class ColumnConf:
     if case_mount is None:
       case_mount = HeatsetInsertConf(l=6, size=M3, thick=1)
     self.case_mount = case_mount
-    self.case_top_height = min(
+    self.top_h = min(
       top_portion * (self.in_h + 2*self.thick),
       self.in_h + self.thick - .1
     )
@@ -84,9 +94,9 @@ class Column(Bosl2Base):
           2*part.w,
           2*part.d,
           part.h,
-        ]).down(self.conf.case_top_height + part.h/2))
+        ]).down(self.conf.top_h + part.h/2))
       else:
-        obj = cut(obj, cuboid([2*part.w, 2*part.d, part.h]).up(part.h/2).down(self.conf.case_top_height))
+        obj = cut(obj, cuboid([2*part.w, 2*part.d, part.h]).up(part.h/2).down(self.conf.top_h))
         # mount connect
         obj = cut_insert(obj, HeatsetInsert(self.conf.case_mount).down(part.h))
       obj = obj.down(self.centerZ).rotateX(self.conf.angle * i).up(self.centerZ)
@@ -114,15 +124,18 @@ class _CasePart(Bosl2Base):
     self.d = self.socket_ref.d + 2*self.conf.between
     self.h = self.conf.in_h + 2*self.conf.thick
     self.w = self.conf.in_w + 2*self.conf.thick
-    bottom_d = 2* self.d
+    bottom_d = self.d + self.h * maths.tan(maths.radians(self.conf.angle))
     mv_fd = 0
     end_offset = bottom_d / 2 - self.conf.in_d/2 - self.conf.thick
     if self.first:
       bottom_d = bottom_d - end_offset
       mv_fd = end_offset/2
+
     if self.last:
       bottom_d = bottom_d - end_offset
       mv_fd = -end_offset/2
+      if self.conf.column_connect == FPCConnector:
+        bottom_d += 2*(4 - self.conf.in_d/2 + self.socket_ref.conf.switch.d/2)
     # rounding
     edges = ["Y"]
     if self.first:
@@ -148,10 +161,10 @@ class _CasePart(Bosl2Base):
     obj = cut_insert(obj, socket, openings=(OPEN_TOP))
     # case connect
     insert = HeatsetInsert(self.conf.case_connect)
-    hole = Shaft(l=self.h-self.conf.case_top_height, size=M2)
+    hole = Shaft(l=self.h-self.conf.top_h, size=M2)
     if self.first:
       if self.conf.top:
-        insert_f = insert.color('black').back(bottom_d/2 - insert.d/3 - mv_fd).down(self.conf.case_top_height)
+        insert_f = insert.color('blue').back(bottom_d/2 - insert.d/3 - mv_fd).down(self.conf.top_h)
         insert_fl = insert_f.left(self.w/2 - insert.d/3)
         insert_fr = insert_f.right(self.w/2 - insert.d/3)
         obj = cut_insert(obj, insert_fr, insert_fl, openings=[OPEN_BOTTOM])
@@ -162,7 +175,7 @@ class _CasePart(Bosl2Base):
         obj = cut_insert(obj, hole_fl, hole_fr, openings=[OPEN_BOTTOM, OPEN_TOP])
     elif self.last:
       if self.conf.top:
-        insert_b = insert.color('blue').forward(bottom_d/2 - insert.d/3 + mv_fd).down(self.conf.case_top_height)
+        insert_b = insert.color('blue').forward(bottom_d/2 - insert.d/3 + mv_fd).down(self.conf.top_h)
         insert_bl = insert_b.left(self.w/2 - insert.d/3)
         insert_br = insert_b.right(self.w/2 - insert.d/3)
         obj = cut_insert(obj, insert_br, insert_bl, openings=[OPEN_BOTTOM])
@@ -173,7 +186,7 @@ class _CasePart(Bosl2Base):
         obj = cut_insert(obj, hole_bl, hole_br, openings=[OPEN_BOTTOM, OPEN_TOP])
     else:
       if self.conf.top:
-        insert_m = insert.color('blue').down(self.conf.case_top_height)
+        insert_m = insert.color('blue').down(self.conf.top_h)
         insert_ml = insert_m.left(self.w/2 - insert.d/3)
         insert_mr = insert_m.right(self.w/2 - insert.d/3)
         obj = cut_insert(obj, insert_mr, insert_ml, openings=[OPEN_BOTTOM])
@@ -182,25 +195,34 @@ class _CasePart(Bosl2Base):
         hole_bl = hole_b.left(self.w/2 - insert.d/3)
         hole_br = hole_b.right(self.w/2 - insert.d/3)
         obj = cut_insert(obj, hole_bl, hole_br, openings=[OPEN_BOTTOM, OPEN_TOP])
-    # jst connect
+    # column connect
     if self.last:
-      hub_jst = JSTConnector(self.conf.hub_jst)
-      obj = cut_insert(
-        obj,
-        hub_jst.yflip().color('pink').forward(bottom_d/2 - hub_jst.d/2 + mv_fd).down(self.h - hub_jst.h/2),
-        openings=[OPEN_BOTTOM],
-      )
-      side_jst = JSTConnector(self.conf.side_jst)
-      obj = cut_insert(
-        obj,
-        side_jst.color('pink').rotateZ(-90).down(self.h - side_jst.h/2).left(self.w/2 - side_jst.d/2),
-        openings=[OPEN_BOTTOM],
-      )
-      obj = cut_insert(
-        obj,
-        side_jst.color('pink').rotateZ(90).down(self.h - side_jst.h/2).right(self.w/2 - side_jst.d/2),
-        openings=[OPEN_BOTTOM],
-      )
+      if self.conf.column_connect == FPCConnector:
+        fpc = FPCConnector(self.conf.fpc)
+        pcb_thick = .6 # TODO parameterize
+        obj = cut_insert(
+          obj,
+          fpc.color('pink').rotateX(90).forward(bottom_d/2 - fpc.h/2 + mv_fd).down(self.socket_ref.h + pcb_thick + .5), # .5 for height of socket mouth above pcb
+          openings=[OPEN_BACK, OPEN_FRONT]
+        )
+      elif self.conf.column_connect == JSTConnector:
+        hub_jst = JSTConnector(self.conf.hub_jst)
+        obj = cut_insert(
+          obj,
+          hub_jst.yflip().color('pink').forward(bottom_d/2 - hub_jst.d/2 + mv_fd).down(self.h - hub_jst.h/2),
+          openings=[OPEN_BOTTOM],
+        )
+        side_jst = JSTConnector(self.conf.side_jst)
+        obj = cut_insert(
+          obj,
+          side_jst.color('pink').rotateZ(-90).down(self.h - side_jst.h/2).left(self.w/2 - side_jst.d/2),
+          openings=[OPEN_BOTTOM],
+        )
+        obj = cut_insert(
+          obj,
+          side_jst.color('pink').rotateZ(90).down(self.h - side_jst.h/2).right(self.w/2 - side_jst.d/2),
+          openings=[OPEN_BOTTOM],
+        )
     # diagonal cut
     f_cut = cuboid([
       self.w,
@@ -212,8 +234,10 @@ class _CasePart(Bosl2Base):
       self.h,
       2*self.h,
     ]).forward(-self.h/2).down(self.h).rotateX(-self.conf.angle/2).forward(-self.d/2).color('red')
-    obj = cut(obj, f_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
-    obj = cut(obj, b_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
+    if not self.last:
+      obj = cut(obj, f_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
+    if not self.first:
+      obj = cut(obj, b_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
     # key rendering
     if self.conf.show_keys and self.conf.switches is not None:
       # switch = self.conf.switches()

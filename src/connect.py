@@ -12,7 +12,7 @@ class M2:
   insert = 3.25
 
 class HeatsetInsertConf():
-  def __init__(self, l=5, size=M3, thick=.5, capped=True, round=1):
+  def __init__(self, l=5, size=M3, thick=.6, capped=True, round=1):
     self.l = l
     self.size = size
     self.thick = thick
@@ -108,4 +108,44 @@ class JSTConnector(Bosl2Base):
       self.conf.in_d + self.conf.thick,
       self.h,
     ]).forward(self.conf.thick/2).up(self.conf.ledge)
+    self.add(obj)
+
+class FPCConnectorConf():
+  def __init__(
+    self,
+    pitch=.5,
+    pins=8,
+    w=None,
+    h=1,
+    d=.5,
+    thick=1,
+  ):
+    self.pitch = pitch
+    self.pins = pins
+    if w is None:
+      w = 2 + pins*pitch
+    self.in_w = w
+    self.in_h = h
+    self.in_d = d
+    self.thick = thick
+
+class FPCConnector(Bosl2Base):
+  def __init__(self, conf: FPCConnectorConf):
+    super().__init__('union', {})
+    self.conf = conf
+    self.w = self.conf.in_w + 2*self.conf.thick
+    self.d = self.conf.in_d + 2*self.conf.thick
+    self.h = self.conf.in_h
+    # shell
+    obj = cuboid([
+      self.w,
+      self.d,
+      self.h,
+    ])
+    # hollow, open top and bottom for strip to pass through
+    obj = cut(obj, cuboid([
+      self.conf.in_w,
+      self.conf.in_d,
+      self.conf.in_h,
+    ]), openings=[OPEN_BOTTOM, OPEN_TOP])
     self.add(obj)

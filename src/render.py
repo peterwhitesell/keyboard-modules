@@ -18,8 +18,8 @@ def render(conf: ColumnConf, stl=False):
     union()(
         bottom,
         top,
-        top_no_keys.left(50).zflip().rotateX(50).down(20),
-        bottom.left(100),
+        # top_no_keys.left(50).zflip().rotateX(50).down(20),
+        # bottom.left(100),
     ).save_as_scad(f'./out/{name}.scad')
     if stl:
         bottom.save_as_stl(f'./out/{name}_bottom.stl')

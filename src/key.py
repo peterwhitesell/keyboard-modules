@@ -26,7 +26,7 @@ class CherryMXSwitch(Bosl2Base):
 
 class ChocV1Switch(Bosl2Base):
   w = 15
-  base_w = 13.6
+  base_w = 13.8
   d = 15
   base_d = 13.8
   h = 11
