@@ -33,6 +33,15 @@ class ColumnConf:
     self.rows = rows
     self.between = between
     self.angle = angle
+    self.angles = []
+    if callable(angle):
+      for i in range(rows-1):
+        self.angles.append(angle(i))
+    elif type(angle) == type([]):
+      self.angles = angle
+    else:
+      for i in range(rows):
+        self.angles.append(angle)
     self.in_w = in_w
     self.in_d = in_d
     self.in_h = in_h
@@ -78,14 +87,24 @@ class Column(Bosl2Base):
     super().__init__('union', {})
     self.conf = conf
     self.socket_ref = Socket(self.conf.socket)
-    self.centerZ = self._rot_center_z()
-    # parts = []
+    front_angle = 0
+    back_angle = 0
+    parts = union()
     for i in range(self.conf.rows):
+      if i > 0:
+        back_angle = self.conf.angles[i-1]
+      if i < len(self.conf.angles):
+        front_angle = self.conf.angles[i]
+      else:
+        front_angle = 0
+      self.centerZ = self._rot_center_z(back_angle)
       part = _CasePart(
         self.conf,
         self.socket_ref,
         first=i == 0,
         last=i == self.conf.rows-1,
+        front_angle=front_angle,
+        back_angle=back_angle,
       )
       obj = part
       # case split
@@ -99,14 +118,25 @@ class Column(Bosl2Base):
         obj = cut(obj, cuboid([2*part.w, 2*part.d, part.h]).up(part.h/2).down(self.conf.top_h))
         # mount connect
         obj = cut_insert(obj, HeatsetInsert(self.conf.case_mount).down(part.h))
-      obj = obj.down(self.centerZ).rotateX(self.conf.angle * i).up(self.centerZ)
-      self.add(obj)
+      if back_angle != 0:
+        parts = self._rotate_back(parts, back_angle, back_angle)
+      parts += obj
+    self.add(parts)
 
-  def _rot_center_z(self):
+  def _rot_center_z(self, angle):
+    if angle == 0:
+      return 0
     d = self.socket_ref.d + 2*self.conf.between
-    h = 0
-    rad = maths.radians(self.conf.angle)/2
-    return d / (2 * maths.tan(rad)) + h
+    rad = maths.radians(angle)/2
+    return d / (2 * maths.tan(rad))
+
+  def _rotate_back(self, obj, center_angle, angle):
+    center_z = self._rot_center_z(center_angle)
+    return obj.down(center_z).rotateX(-angle).up(center_z)
+
+  def _rotate_forward(self, obj, center_angle, angle):
+    center_z = self._rot_center_z(center_angle)
+    return obj.down(center_z).rotateX(angle).up(center_z)
 
 class _CasePart(Bosl2Base):
   def __init__(
@@ -115,6 +145,8 @@ class _CasePart(Bosl2Base):
     socket_ref: Socket,
     first=False,
     last=False,
+    front_angle=0,
+    back_angle=0,
   ):
     super().__init__('union', {})
     self.socket_ref = socket_ref
@@ -124,13 +156,16 @@ class _CasePart(Bosl2Base):
     self.d = self.socket_ref.d + 2*self.conf.between
     self.h = self.conf.in_h + 2*self.conf.thick
     self.w = self.conf.in_w + 2*self.conf.thick
-    bottom_d = self.d + self.h * maths.tan(maths.radians(self.conf.angle))
+    bottom_d = self.d
+    if front_angle != 0:
+      bottom_d += self.h * maths.tan(maths.radians(front_angle))
+    if back_angle != 0:
+      bottom_d += self.h * maths.tan(maths.radians(back_angle))
     mv_fd = 0
     end_offset = bottom_d / 2 - self.conf.in_d/2 - self.conf.thick
     if self.first:
       bottom_d = bottom_d - end_offset
       mv_fd = end_offset/2
-
     if self.last:
       bottom_d = bottom_d - end_offset
       mv_fd = -end_offset/2
@@ -224,16 +259,17 @@ class _CasePart(Bosl2Base):
           openings=[OPEN_BOTTOM],
         )
     # diagonal cut
+    cut_d = 2*self.h
     f_cut = cuboid([
       self.w,
-      self.h,
+      cut_d,
       2*self.h,
-    ]).forward(self.h/2).down(self.h).rotateX(self.conf.angle/2).forward(self.d/2).color('red')
+    ]).forward(cut_d/2).down(self.h).rotateX(front_angle/2).forward(self.d/2)
     b_cut = cuboid([
       self.w,
-      self.h,
+      cut_d,
       2*self.h,
-    ]).forward(-self.h/2).down(self.h).rotateX(-self.conf.angle/2).forward(-self.d/2).color('red')
+    ]).forward(-cut_d/2).down(self.h).rotateX(-back_angle/2).forward(-self.d/2)
     if not self.last:
       obj = cut(obj, f_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
     if not self.first:

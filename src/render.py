@@ -4,7 +4,7 @@ from key import *
 from solid2 import *
 from solid2.extensions.bosl2 import *
 
-def render(conf: ColumnConf, stl=False):
+def render(conf: ColumnConf, stl=False, name=None):
     conf.top = True
     top = Column(conf)
     conf.show_keys = False
@@ -12,8 +12,8 @@ def render(conf: ColumnConf, stl=False):
 
     conf.top = False
     bottom = Column(conf)
-
-    name = f'column-r{conf.rows}-a{conf.angle}-{conf.switches.__name__}'
+    if name is None:
+        name = f'column-r{conf.rows}-a{conf.angle}-{conf.switches.__name__}'
 
     union()(
         bottom,
