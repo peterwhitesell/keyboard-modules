@@ -4,7 +4,7 @@ from key import *
 from solid2 import *
 from solid2.extensions.bosl2 import *
 
-def render(conf: ColumnConf, stl=False, name=None):
+def renderColumn(conf: ColumnConf, stl=False, name=None):
     conf.top = True
     top = Column(conf)
     conf.show_keys = False
