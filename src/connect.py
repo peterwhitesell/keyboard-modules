@@ -3,11 +3,14 @@ from solid2.extensions.bosl2 import *
 from solid2.extensions.bosl2.bosl2_base import Bosl2Base
 from cut import *
 
-class M3:
+class ScrewSize:
+  pass
+
+class M3(ScrewSize):
   diameter = 3
   insert = 4.25
 
-class M2:
+class M2(ScrewSize):
   diameter = 2
   insert = 3.25
 
@@ -55,6 +58,10 @@ class Shaft(Bosl2Base):
       openings=[OPEN_BOTTOM, OPEN_TOP],
     ))
 
+class Connector(Bosl2Base):
+  def __init__(self):
+    super().__init__('union', {})
+
 class JSTConnectorConf():
   def __init__(
     self,
@@ -77,9 +84,9 @@ class JSTConnectorConf():
     self.ledge = ledge
     self.thick = thick
 
-class JSTConnector(Bosl2Base):
+class JSTConnector(Connector):
   def __init__(self, conf: JSTConnectorConf):
-    super().__init__('union', {})
+    super().__init__()
     self.conf = conf
     self.w = self.conf.in_w + 2*self.conf.thick
     self.d = self.conf.in_d + 2*self.conf.thick
@@ -129,9 +136,9 @@ class FPCConnectorConf():
     self.in_d = d
     self.thick = thick
 
-class FPCConnector(Bosl2Base):
+class FPCConnector(Connector):
   def __init__(self, conf: FPCConnectorConf):
-    super().__init__('union', {})
+    super().__init__()
     self.conf = conf
     self.w = self.conf.in_w + 2*self.conf.thick
     self.d = self.conf.in_d + 2*self.conf.thick

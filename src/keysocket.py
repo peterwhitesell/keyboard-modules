@@ -42,7 +42,7 @@ class Socket(Bosl2Base):
       conf.notch_z = -conf.switch.tab_h
       conf.thick = conf.switch.base_h
     self.conf = conf
-    self.notchH = self.conf.thick + self.conf.notch_z
+    self.notch_h = self.conf.thick + self.conf.notch_z
     self.w = self.conf.recess_w + 2 * self.conf.rim
     self.d = self.conf.recess_d + 2 * self.conf.rim
     self.h = self.conf.thick
@@ -60,8 +60,8 @@ class Socket(Bosl2Base):
     notch = cuboid([
       self.conf.notch_w,
       self.conf.notch_d,
-      self.notchH,
-    ]).up(self.conf.thick/2 - self.notchH/2 + self.conf.notch_z).color('blue')
+      self.notch_h,
+    ]).up(self.conf.thick/2 - self.notch_h/2 + self.conf.notch_z).color('blue')
     obj = cut(obj, recess, openings=[OPEN_BOTTOM, OPEN_TOP])
     obj = cut(
       obj,
