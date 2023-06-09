@@ -107,6 +107,19 @@ class Column(Bosl2Base):
         back_angle=back_angle,
       )
       obj = part
+      # diagonal cuts
+      cut_w = 100
+      if i != self.conf.rows-1:
+        f_cut = self._rotate_forward(cuboid(cut_w).color('pink').forward(cut_w/2), front_angle, front_angle/2)
+        obj = cut(obj, f_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
+        # if i == 1:
+        #   obj += f_cut
+      if i != 0:
+        b_cut = self._rotate_back(cuboid(cut_w).color('red').forward(-cut_w/2), back_angle, back_angle/2)
+        # b_cut = cuboid(cut_w).back(cut_w/2)
+        obj = cut(obj, b_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
+        # if i == 2:
+        #   obj += b_cut
       # case split
       if self.conf.top:
         obj = cut(obj, cuboid([
@@ -126,9 +139,10 @@ class Column(Bosl2Base):
   def _rot_center_z(self, angle):
     if angle == 0:
       return 0
-    d = self.socket_ref.d + 2*self.conf.between
+    d = self.socket_ref.conf.switch.d + self.conf.between
     rad = maths.radians(angle)/2
-    return d / (2 * maths.tan(rad))
+    # cap.up(self.conf.switches.top_h).down(cap.top_h).up(cap.thick)
+    return d / (2 * maths.tan(rad)) + self.conf.switches.top_h + self.conf.caps.thick
 
   def _rotate_back(self, obj, center_angle, angle):
     center_z = self._rot_center_z(center_angle)
@@ -158,9 +172,9 @@ class _CasePart(Bosl2Base):
     self.w = self.conf.in_w + 2*self.conf.thick
     bottom_d = self.d
     if front_angle != 0:
-      bottom_d += self.h * maths.tan(maths.radians(front_angle))
+      bottom_d *= 2.5
     if back_angle != 0:
-      bottom_d += self.h * maths.tan(maths.radians(back_angle))
+      bottom_d *= 2
     mv_fd = 0
     end_offset = bottom_d / 2 - self.conf.in_d/2 - self.conf.thick
     if self.first:
@@ -258,22 +272,6 @@ class _CasePart(Bosl2Base):
           side_jst.color('pink').rotateZ(90).down(self.h - side_jst.h/2).right(self.w/2 - side_jst.d/2),
           openings=[OPEN_BOTTOM],
         )
-    # diagonal cut
-    cut_d = 2*self.h
-    f_cut = cuboid([
-      self.w,
-      cut_d,
-      2*self.h,
-    ]).forward(cut_d/2).down(self.h).rotateX(front_angle/2).forward(self.d/2)
-    b_cut = cuboid([
-      self.w,
-      cut_d,
-      2*self.h,
-    ]).forward(-cut_d/2).down(self.h).rotateX(-back_angle/2).forward(-self.d/2)
-    if not self.last:
-      obj = cut(obj, f_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
-    if not self.first:
-      obj = cut(obj, b_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
     # key rendering
     if self.conf.show_keys and self.conf.switches is not None:
       # switch = self.conf.switches()
