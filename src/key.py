@@ -8,6 +8,7 @@ cherry_mx_switch = import_('../things/switches/cherry_mx.stl')
 dsa_cap = import_('../things/caps/dsa.stl')
 xda_cap = import_('../things/caps/xda.stl')
 kailh_lp_cap = import_('../things/caps/kailh_lp.stl')
+cap = import_('../things/caps/cap.stl')
 
 class KeySwitch(Bosl2Base):
   def __init__(self):
@@ -77,3 +78,13 @@ class KailhLPCap(KeyCap):
   def __init__(self):
     super().__init__()
     self.add(kailh_lp_cap)
+
+class KailhLPCap2(KeyCap):
+  w = 17
+  d = 16
+  h = 5.6
+  top_h = 4
+  thick = 2
+  def __init__(self):
+    super().__init__()
+    self.add(cap)
