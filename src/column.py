@@ -112,14 +112,9 @@ class Column(Bosl2Base):
       if i != self.conf.rows-1:
         f_cut = self._rotate_forward(cuboid(cut_w).color('pink').forward(cut_w/2), front_angle, front_angle/2)
         obj = cut(obj, f_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
-        # if i == 1:
-        #   obj += f_cut
       if i != 0:
         b_cut = self._rotate_back(cuboid(cut_w).color('red').forward(-cut_w/2), back_angle, back_angle/2)
-        # b_cut = cuboid(cut_w).back(cut_w/2)
         obj = cut(obj, b_cut, openings=[OPEN_LEFT, OPEN_RIGHT])
-        # if i == 2:
-        #   obj += b_cut
       # case split
       if self.conf.top:
         obj = cut(obj, cuboid([
@@ -142,7 +137,10 @@ class Column(Bosl2Base):
     d = self.socket_ref.conf.switch.d + self.conf.between
     rad = maths.radians(angle)/2
     # cap.up(self.conf.switches.top_h).down(cap.top_h).up(cap.thick)
-    return d / (2 * maths.tan(rad)) + self.conf.switches.top_h + self.conf.caps.thick
+    z = d / (2 * maths.tan(rad))
+    if angle > 0:
+      z += self.conf.switches.top_h + self.conf.caps.thick
+    return z
 
   def _rotate_back(self, obj, center_angle, angle):
     center_z = self._rot_center_z(center_angle)
