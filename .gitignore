@@ -1,2 +1,7 @@
 .DS_STORE
 out/
+*.log
+*.erc
+.env
+*_lib_sklib.py
+__pycache__

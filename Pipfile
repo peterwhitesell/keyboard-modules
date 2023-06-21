@@ -5,6 +5,10 @@ name = "pypi"
 
 [packages]
 "solidpython2" = "*"
+install = "*"
+pcbflow = {editable = true, ref = "1efe0d5ec35b14f9159213a370624226555a5a48", git = "ssh://git@github.com/michaelgale/pcbflow.git"}
+shapely = "==1.8.5"
+skidl = "*"
 
 [dev-packages]
 

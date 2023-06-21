@@ -1,5 +1,5 @@
 # keyboard-modules
-3D models for modular ortholinear split keyboards, written with [SolidPython2](https://github.com/jeff-dh/SolidPython).
+3D models for modular ortholinear split keyboards, written with [skidl](https://github.com/devbisme/skidl) for circuitry schematics and [SolidPython2](https://github.com/jeff-dh/SolidPython) for 3D modeling.
 
 Use as a library to generate configurable module models. Output format is `.scad`, or `.stl`.
 
@@ -9,6 +9,10 @@ Use as a library to generate configurable module models. Output format is `.scad
     * pipenv (`pip install pipenv`)
     * `pipenv shell`
     * `pipenv install`
+    * for pcbs
+      * ensure you have kicad >= 6 and pcbnew installed
+      * add the [kiswitch](https://github.com/kiswitch/kiswitch) footprint library
+      * create a `.env` file specifying `KICAD_SYMBOL_DIR`, e.g. `KICAD_SYMBOL_DIR=/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols/`
 
 ## Parts
 ### Column
@@ -50,6 +54,17 @@ renderColumn(ColumnConf(
   ![out/<name>_bottom.scad](./docs/example-bottom.png)
 * `out/<name>_top.scad` is the top part of the case
   ![out/<name>_top.scad](./docs/example-top.png)
+
+## PCB
+### Column
+Flexible PCB for a single column. e.g.
+```python
+from schematic import Column
+col = Column(5)
+col.render()
+```
+
+Renders a netlist to `pcb/column/netlists/r5.net`
 
 ## Config
 
